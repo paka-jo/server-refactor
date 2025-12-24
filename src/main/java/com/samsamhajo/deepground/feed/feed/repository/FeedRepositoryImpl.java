@@ -20,21 +20,35 @@ public class FeedRepositoryImpl implements FeedRepositoryCustom {
     @Override
     public Slice<FetchFeedResponse> findFeeds(Pageable pageable) {
 
-        List<FetchFeedResponse> feeds = em.createQuery("select new com.samsamhajo.deepground.feed.feed.model.v2.FetchFeedResponse" +
-                        "(m.publicId , mp.profilePublicId , f.id, m.nickname, f.content, f.likeCount, f.commentCount," +
-                        "f.sharedCount, mp.profileImage, f.createdAt)" +
-                        "from Feed f " +
-                        "join f.member m " +
-                        "left join m.memberProfile mp", FetchFeedResponse.class)
+        List<Long> ids = em.createQuery(
+                        "SELECT f.id FROM Feed f ORDER BY f.createdAt DESC", Long.class)
                 .setFirstResult((int) pageable.getOffset())
-                .setMaxResults(pageable.getPageSize()+1)
+                .setMaxResults(pageable.getPageSize() + 1)
                 .getResultList();
 
+        if (ids.isEmpty()) {
+            return new SliceImpl<>(List.of(), pageable, false);
+        }
+
         boolean hasNext = false;
-        if (feeds.size() > pageable.getPageSize()) {
-            feeds.remove(pageable.getPageSize());
+        if (ids.size() > pageable.getPageSize()) {
+            ids.remove(pageable.getPageSize());
             hasNext = true;
         }
+
+        List<FetchFeedResponse> feeds = em.createQuery("select new com.samsamhajo.deepground.feed.feed.model.v2.FetchFeedResponse " +
+                                "(m.publicId , mp.profilePublicId , f.id, m.nickname, f.content, f.likeCount, f.commentCount," +
+                                "f.sharedCount, mp.profileImage, f.createdAt)" +
+                                "from Feed f " +
+                                "join f.member m " +
+                                "left join m.memberProfile mp " +
+                                "where f.id in :ids " +
+                                "order by f.createdAt desc",
+                        FetchFeedResponse.class)
+                .setParameter("ids", ids)
+                .getResultList();
+
+
         return new SliceImpl<>(feeds,pageable,hasNext);
     }
 }
