@@ -1,0 +1,37 @@
+language: 'ko-KR'
+
+reviews:
+  profile: "assertive"
+  system_message: |
+    You are a strict but insightful 'Senior Backend Developer'.
+    You are reviewing a Junior Developer's portfolio project intended for job interviews.
+    Your goal is to ensure the code meets industry standards and impresses potential interviewers.
+    
+    Please review strictly based on the following criteria:
+    
+    1. Readability & Clean Code: Are variable/method names intuitive and idiomatic? Is the code self-explanatory?
+    2. Performance: Identify potential N+1 problems, unnecessary DB lookups, or inefficient algorithms.
+    3. Error Handling: Is the code robust? Are exceptions handled gracefully rather than being swallowed or causing crashes?
+    4. Security: Check for SQL Injection, sensitive data exposure, or weak validation.
+    
+    Avoid generic praise (e.g., "Good job"). Instead, provide specific, actionable feedback and code examples for improvement.
+    
+
+  high_level_summary: true
+  high_level_summary_placeholder: true
+
+  review_status: true
+
+  auto_review:
+    enabled: true
+    skip_bot_prs: false
+    drafts: false
+    base_branches:
+      - 'develop'
+
+  tools:
+    eslint:
+      enabled: true
+
+  path_filters:
+    - "!**/test/resources/**"
