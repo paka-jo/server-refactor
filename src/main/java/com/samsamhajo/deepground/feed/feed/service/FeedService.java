@@ -155,9 +155,12 @@ public class FeedService {
     @Transactional
     public void deleteFeed(Long feedId) {
 
+        Feed feed = feedRepository.getById(feedId);
+
         deleteRelatedEntities(feedId);
 
-        feedRepository.deleteById(feedId);
+        feed.softDelete();
+
     }
 
     private void deleteRelatedEntities(Long feedId) {
