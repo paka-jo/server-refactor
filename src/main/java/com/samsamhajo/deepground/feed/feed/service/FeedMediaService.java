@@ -47,10 +47,7 @@ public class FeedMediaService {
     
     @Transactional
     public void deleteAllByFeedId(Long feedId) {
-        // DB에서 삭제 (JPA Query Method 사용)
-        List<FeedMedia> mediaList = feedMediaRepository.findAllByFeedId(feedId);
-
-        mediaList.forEach(FeedMedia::softDelete);
+        feedMediaRepository.softDeleteAllByFeedId(feedId);
     }
 
     public void updateFeedMedia(Feed feed, FeedUpdateRequest request) {
