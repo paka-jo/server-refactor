@@ -1,4 +1,4 @@
-package com.samsamhajo.deepground.feed.feed.model.v2;
+package com.samsamhajo.deepground.feed.feed.model;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -44,7 +44,7 @@ public class FetchFeedResponse {
     }
 
     private FetchFeedResponse(UUID publicId, UUID profilePublicId, Long feedId, String memberName,
-                              String content, int likeCount, int commentCount, int shareCount,
+                              String content, int likeCount, int commentCount, int shareCount,boolean isLiked,
                               String profileImageUrl, LocalDateTime createdAt, List<String> mediaUrls){
         this.publicId = publicId;
         this.profilePublicId = profilePublicId;
@@ -54,8 +54,19 @@ public class FetchFeedResponse {
         this.likeCount = likeCount;
         this.commentCount = commentCount;
         this.shareCount = shareCount;
+        this.isLiked = isLiked;
         this.profileImageUrl = profileImageUrl;
         this.createdAt = createdAt;
         this.mediaUrls = mediaUrls;
+    }
+
+    public static FetchFeedResponse of(UUID publicId, UUID profilePublicId, Long feedId, String memberName,
+                                       String content, int likeCount, int commentCount, int shareCount,
+                                       boolean isLiked, String profileImageUrl, LocalDateTime createdAt, List<String> mediaUrls) {
+        return new FetchFeedResponse(
+                publicId, profilePublicId, feedId, memberName, content,
+                likeCount, commentCount, shareCount, isLiked,
+                profileImageUrl, createdAt, mediaUrls
+        );
     }
 }
