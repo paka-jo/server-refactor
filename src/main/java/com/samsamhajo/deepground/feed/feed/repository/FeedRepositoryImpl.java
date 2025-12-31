@@ -21,7 +21,7 @@ public class FeedRepositoryImpl implements FeedRepositoryCustom {
     public Slice<FetchFeedResponse> findFeeds(Pageable pageable) {
 
         List<Long> ids = em.createQuery(
-                        "SELECT f.id FROM Feed f ORDER BY f.createdAt DESC", Long.class)
+                        "select f.id from Feed f order by f.createdAt desc", Long.class)
                 .setFirstResult((int) pageable.getOffset())
                 .setMaxResults(pageable.getPageSize() + 1)
                 .getResultList();
