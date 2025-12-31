@@ -1,6 +1,6 @@
 package com.samsamhajo.deepground.feed.feed.repository;
 
-import com.samsamhajo.deepground.feed.feed.model.v2.FetchFeedResponse;
+import com.samsamhajo.deepground.feed.feed.model.FetchFeedResponse;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Slice;
@@ -36,7 +36,7 @@ public class FeedRepositoryImpl implements FeedRepositoryCustom {
             hasNext = true;
         }
 
-        List<FetchFeedResponse> feeds = em.createQuery("select new com.samsamhajo.deepground.feed.feed.model.v2.FetchFeedResponse " +
+        List<FetchFeedResponse> feeds = em.createQuery("select new com.samsamhajo.deepground.feed.feed.model.FetchFeedResponse " +
                                 "(m.publicId , mp.profilePublicId , f.id, m.nickname, f.content, f.likeCount, f.commentCount," +
                                 "f.sharedCount, mp.profileImage, f.createdAt)" +
                                 "from Feed f " +
