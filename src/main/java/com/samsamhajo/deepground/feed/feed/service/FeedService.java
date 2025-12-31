@@ -5,8 +5,8 @@ import com.samsamhajo.deepground.feed.feed.entity.FeedMedia;
 import com.samsamhajo.deepground.feed.feed.exception.FeedErrorCode;
 import com.samsamhajo.deepground.feed.feed.exception.FeedException;
 import com.samsamhajo.deepground.feed.feed.model.*;
-import com.samsamhajo.deepground.feed.feed.model.v2.FetchFeedResponse;
-import com.samsamhajo.deepground.feed.feed.model.v2.FetchFeedsResponse;
+import com.samsamhajo.deepground.feed.feed.model.FetchFeedResponse;
+import com.samsamhajo.deepground.feed.feed.model.FetchFeedsResponse;
 import com.samsamhajo.deepground.feed.feed.repository.FeedLikeRepository;
 import com.samsamhajo.deepground.feed.feed.repository.FeedMediaRepository;
 import com.samsamhajo.deepground.feed.feed.repository.FeedRepository;
@@ -68,36 +68,36 @@ public class FeedService {
         return feed;
     }
 
-    public com.samsamhajo.deepground.feed.feed.model.FetchFeedResponse getFeed(Long feedId, Long memberId) {
-        Feed feed = feedRepository.getById(feedId);
+    public FetchFeedResponse getFeed(Long feedId, Long memberId) {
+
+        FetchFeedResponse feed = feedRepository.getByIdWithMemberAndProfile(feedId)
+                .orElseThrow(() -> new FeedException(FeedErrorCode.FEED_NOT_FOUND));
 
         boolean isUserAuthenticated = (memberId != null);
 
-        Member member = feed.getMember();
-
-        UUID publicProfileId = Optional.ofNullable(member.getMemberProfile())
-                .map(MemberProfile::getProfilePublicId)
-                .orElse(null);
-
         boolean isLikedByCurrentUser = false;
         if (isUserAuthenticated) {
-            isLikedByCurrentUser = feedLikeService.isLiked(feed.getId(), memberId);
+            isLikedByCurrentUser = feedLikeService.isLiked(feed.getFeedId(), memberId);
         }
 
-        return com.samsamhajo.deepground.feed.feed.model.FetchFeedResponse.builder()
-                .feedId(feed.getId())
-                .content(feed.getContent())
-                .createdAt(feed.getCreatedAt().toLocalDate())
-                .publicId(feed.getMember().getPublicId())
-                .profilePublicId(publicProfileId)
-                .memberName(feed.getMember().getNickname())
-                .mediaUrls(feedMediaService.findAllMediaUrlsByFeedId(feed.getId()))
-                .shareCount(feed.getCommentCount())
-                .commentCount(feed.getCommentCount())
-                .likeCount(feed.getLikeCount())
-                .isLiked(isLikedByCurrentUser)
-                .profileImageUrl(member.getMemberProfile().getProfileImage())
-                .build();
+        List<String> mediaUrls = feedMediaRepository.findAllByFeedId(feedId)
+                .stream()
+                .map(FeedMedia::getMediaUrl)
+                .collect(Collectors.toList());
+
+        return FetchFeedResponse.of(
+                feed.getPublicId(),
+                feed.getProfilePublicId(),
+                feedId,
+                feed.getMemberName(),
+                feed.getContent(),
+                feed.getLikeCount(),
+                feed.getCommentCount(),
+                feed.getShareCount(),
+                isLikedByCurrentUser,
+                feed.getProfileImageUrl(),
+                feed.getCreatedAt(),
+                mediaUrls);
     }
 
     public FetchFeedsResponse getFeeds(Pageable pageable, Long memberId) {
