@@ -19,8 +19,6 @@ public interface FeedMediaRepository extends JpaRepository<FeedMedia, Long> {
 
     List<FeedMedia> findAllByFeedId(Long feedId);
     
-    void deleteAllByFeedId(Long feedId);
-    
     default FeedMedia getById(Long feedMediaId){
         return findById(feedMediaId)
                 .orElseThrow(() -> new MediaException(MediaErrorCode.MEDIA_NOT_FOUND,feedMediaId));

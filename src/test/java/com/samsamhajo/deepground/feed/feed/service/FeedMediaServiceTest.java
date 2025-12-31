@@ -135,7 +135,7 @@ class FeedMediaServiceTest {
 
             // then
             verify(s3Uploader).upload(any(MultipartFile.class), eq("feed-media"));
-            verify(feedMediaRepository).deleteAllByFeedId(1L);
+            verify(feedMediaRepository).softDeleteAllByFeedId(1L);
             verify(feedMediaRepository).saveAll(anyList());
         }
     }
