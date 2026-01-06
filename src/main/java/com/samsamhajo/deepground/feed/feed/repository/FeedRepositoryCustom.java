@@ -1,6 +1,6 @@
 package com.samsamhajo.deepground.feed.feed.repository;
 
-import com.samsamhajo.deepground.feed.feed.model.v2.FetchFeedResponse;
+import com.samsamhajo.deepground.feed.feed.model.FetchFeedResponse;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;

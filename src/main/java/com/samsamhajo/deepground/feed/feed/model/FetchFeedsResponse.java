@@ -1,4 +1,4 @@
-package com.samsamhajo.deepground.feed.feed.model.v2;
+package com.samsamhajo.deepground.feed.feed.model;
 
 import lombok.Getter;
 import org.springframework.data.domain.Slice;

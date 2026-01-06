@@ -5,16 +5,13 @@ import com.samsamhajo.deepground.feed.feed.exception.FeedErrorCode;
 import com.samsamhajo.deepground.feed.feed.exception.FeedException;
 import com.samsamhajo.deepground.feed.feed.model.FeedCreateRequest;
 import com.samsamhajo.deepground.feed.feed.model.FeedUpdateRequest;
-import com.samsamhajo.deepground.feed.feed.model.v2.FetchFeedResponse;
-import com.samsamhajo.deepground.feed.feed.model.v2.FetchFeedsResponse;
-import com.samsamhajo.deepground.feed.feed.repository.FeedLikeRepository;
+import com.samsamhajo.deepground.feed.feed.model.FetchFeedResponse;
+import com.samsamhajo.deepground.feed.feed.model.FetchFeedsResponse;
 import com.samsamhajo.deepground.feed.feed.repository.FeedMediaRepository;
 import com.samsamhajo.deepground.feed.feed.repository.FeedRepository;
 import com.samsamhajo.deepground.feed.feedcomment.service.FeedCommentService;
-import com.samsamhajo.deepground.feed.feedshared.service.SharedFeedService;
 import com.samsamhajo.deepground.member.entity.Member;
 import com.samsamhajo.deepground.member.entity.MemberProfile;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,7 +23,6 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
