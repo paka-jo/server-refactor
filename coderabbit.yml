@@ -34,4 +34,6 @@ reviews:
       enabled: true
 
   path_filters:
-    - "!**/test/resources/**"
+    - "!**/src/test/**"
+    - "!**/target/**"
+    - "!**/build/**"           
