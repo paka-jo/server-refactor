@@ -4,9 +4,11 @@ import com.samsamhajo.deepground.feed.feed.entity.Feed;
 import com.samsamhajo.deepground.feed.feed.exception.FeedErrorCode;
 import com.samsamhajo.deepground.feed.feed.exception.FeedException;
 import com.samsamhajo.deepground.feed.feed.model.FetchFeedResponse;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -18,9 +20,14 @@ import java.util.Optional;
 @Repository
 public interface FeedRepository extends JpaRepository<Feed, Long>, FeedRepositoryCustom {
 
+
     default Feed getById(Long id) {
         return findById(id).orElseThrow(() -> new FeedException(FeedErrorCode.FEED_NOT_FOUND));
     }
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select f from Feed f where f.id = :id")
+    Optional<Feed> findByIdWithLock(@Param("id") Long id);
 
     Page<Feed> findAllByMemberId(Pageable pageable, Long memberId);
 

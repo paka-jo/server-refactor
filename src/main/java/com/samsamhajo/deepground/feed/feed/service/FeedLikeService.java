@@ -24,7 +24,8 @@ public class FeedLikeService {
     public void feedLikeIncrease(Long feedId, Member member) {
         increaseValidate(feedId, member.getId());
 
-        Feed feed = feedRepository.getById(feedId);
+        Feed feed = feedRepository.findByIdWithLock(feedId)
+                .orElseThrow(()-> new FeedException(FeedErrorCode.FEED_NOT_FOUND));
 
         FeedLike feedLike = FeedLike.of(feed, member);
 
