@@ -10,6 +10,8 @@ import com.samsamhajo.deepground.feed.feed.repository.FeedRepository;
 import com.samsamhajo.deepground.member.entity.Member;
 import com.samsamhajo.deepground.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,58 +21,63 @@ public class FeedLikeService {
 
     private final FeedRepository feedRepository;
     private final FeedLikeRepository feedLikeRepository;
+    private final RedisTemplate<String,Object> redisTemplate;
 
     @Transactional
     public void feedLikeIncrease(Long feedId, Member member) {
-        increaseValidate(feedId, member.getId());
 
-        Feed feed = feedRepository.findByIdWithLock(feedId)
-                .orElseThrow(()-> new FeedException(FeedErrorCode.FEED_NOT_FOUND));
+        Long memberId = member.getId();
+
+        String key = getRedisKey(feedId);
+
+        Boolean isFeedLike  = redisTemplate.opsForValue().setBit(key,memberId,true);
+
+        if (isFeedLike != null && isFeedLike) {
+            throw new FeedException(FeedErrorCode.FEED_LIKE_ALREADY_EXISTS);
+        }
+
+        Feed feed = feedRepository.getReferenceById(feedId);
 
         FeedLike feedLike = FeedLike.of(feed, member);
 
         feedLikeRepository.save(feedLike);
 
-        updateCountFeedLikeByFeedId(feedId);
+        redisTemplate.opsForSet().add(getDirtyKey(), String.valueOf(feedId));
     }
 
     @Transactional
     public void feedLikeDecrease(Long feedId, Long memberId) {
-        // 이미 0 이거나 음수인 경우 취소하려 할 때, 예외 발생 
-        decreaseValidate(feedId);
+        String key = getRedisKey(feedId);
 
-        FeedLike feedLike = feedLikeRepository.getByFeedIdAndMemberId(feedId, memberId);
+        Boolean isLiked = redisTemplate.opsForValue().getBit(key, memberId);
 
-        feedLikeRepository.delete(feedLike);
+        if (isLiked != null && !isLiked) {
+            throw new FeedException(FeedErrorCode.FEED_LIKE_NOT_FOUND);
+        }
 
-        updateCountFeedLikeByFeedId(feedId);
-    }
+        redisTemplate.opsForValue().setBit(key, memberId, false);
 
-    public int countFeedLikeByFeedId(Long feedId) {
-        return feedLikeRepository.countByFeedId(feedId);
-    }
+        redisTemplate.opsForSet().add(getDirtyKey(), String.valueOf(feedId));
 
-    private void updateCountFeedLikeByFeedId(Long feedId) {
-        feedRepository.updateCountFeedLikeByFeedId(feedId);
+        feedLikeRepository.deleteByFeedIdAndMemberId(feedId, memberId);
     }
 
     public void deleteAllByFeedId(Long feedId) {
+
         feedLikeRepository.deleteAllByFeedId(feedId);
+        redisTemplate.delete(getRedisKey(feedId));
     }
 
     public boolean isLiked(Long feedId, Long memberId) {
         return feedLikeRepository.existsByFeedIdAndMemberId(feedId, memberId);
     }
 
-    private void decreaseValidate(Long feedId) {
-        if(countFeedLikeByFeedId(feedId) <= 0){
-            throw new FeedException(FeedErrorCode.FEED_LIKE_MINUS_NOT_ALLOWED);
-        }
+    private String getRedisKey(Long feedId) {
+        return "feed:" + feedId + ":likes:members";
     }
 
-    private void increaseValidate(Long feedId, Long memberId) {
-        if (feedLikeRepository.existsByFeedIdAndMemberId(feedId, memberId)) {
-            throw new FeedException(FeedErrorCode.FEED_LIKE_ALREADY_EXISTS);
-        }
+    private String getDirtyKey() {
+        return "feed:likes:dirty";
     }
+
 }
