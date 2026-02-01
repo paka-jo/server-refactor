@@ -7,166 +7,124 @@ import com.samsamhajo.deepground.feed.feed.exception.FeedException;
 import com.samsamhajo.deepground.feed.feed.repository.FeedLikeRepository;
 import com.samsamhajo.deepground.feed.feed.repository.FeedRepository;
 import com.samsamhajo.deepground.member.entity.Member;
-import com.samsamhajo.deepground.member.exception.MemberErrorCode;
-import com.samsamhajo.deepground.member.exception.MemberException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.SetOperations;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Optional;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
+@ExtendWith(MockitoExtension.class)
 class FeedLikeServiceTest {
 
+    @Mock
     private FeedRepository feedRepository;
-    private FeedLikeRepository feedLikeRepository;
-    private FeedLikeService feedLikeService;
 
-    private static final String TEST_CONTENT = "테스트 피드 내용입니다.";
-    private static final String TEST_EMAIL = "test@example.com";
-    private static final String TEST_PASSWORD = "password123";
-    private static final String TEST_NICKNAME = "테스트유저";
+    @Mock
+    private FeedLikeRepository feedLikeRepository;
+
+    @Mock
+    private RedisTemplate<String, Object> redisTemplate;
+
+    @Mock
+    private ValueOperations<String, Object> valueOperations;
+
+    @Mock
+    private SetOperations<String, Object> setOperations;
+
+    @InjectMocks
+    private FeedLikeService feedLikeService;
 
     @BeforeEach
     void setUp() {
-        feedRepository = mock(FeedRepository.class);
-        feedLikeRepository = mock(FeedLikeRepository.class);
-        
-        feedLikeService = new FeedLikeService(
-            feedRepository,
-            feedLikeRepository
-        );
+
+        lenient().when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        lenient().when(redisTemplate.opsForSet()).thenReturn(setOperations);
     }
 
     @Test
-    @DisplayName("피드 좋아요 증가 성공")
+    @DisplayName("피드 좋아요 증가 성공 (Redis)")
     void feedLikeIncreaseSuccess() {
         // given
-        Member testMember = Member.createLocalMember(TEST_EMAIL, TEST_PASSWORD, TEST_NICKNAME);
-        Feed testFeed = Feed.of(TEST_CONTENT, testMember);
-        FeedLike feedLike = FeedLike.of(testFeed, testMember);
+        Long feedId = 1L;
+        Long memberId = 1L;
+        Member member = mock(Member.class);
+        when(member.getId()).thenReturn(memberId);
 
-        ReflectionTestUtils.setField(testMember, "id", 1L);
-        ReflectionTestUtils.setField(testFeed, "id", 1L);
-        ReflectionTestUtils.setField(feedLike, "id", 1L);
-
-        when(feedRepository.getById(1L)).thenReturn(testFeed);
-        when(feedLikeRepository.existsByFeedIdAndMemberId(1L, 1L)).thenReturn(false);
-        when(feedLikeRepository.save(any(FeedLike.class))).thenReturn(feedLike);
+        when(valueOperations.setBit(anyString(), eq(memberId), eq(true))).thenReturn(false);
 
         // when
-        feedLikeService.feedLikeIncrease(1L, testMember);
+        feedLikeService.feedLikeIncrease(feedId, member);
 
         // then
-        verify(feedLikeRepository).save(any(FeedLike.class));
+        verify(setOperations).add(eq("feed:likes:dirty"), anyString()); // Dirty Checking 확인
+
     }
 
     @Test
-    @DisplayName("피드 좋아요 증가 실패 - 이미 좋아요를 누른 경우")
-    void feedLikeIncreaseFailWithAlreadyLiked() {
-        // given
-        Member testMember = mock(Member.class);
-
-        // given
-        when(feedLikeRepository.existsByFeedIdAndMemberId(1L, 1L)).thenReturn(true);
-        when(testMember.getId()).thenReturn(1L);
-
-        // when & then
-        assertThatThrownBy(() -> feedLikeService.feedLikeIncrease(1L, testMember))
-                .isInstanceOf(FeedException.class)
-                .hasFieldOrPropertyWithValue("errorCode", FeedErrorCode.FEED_LIKE_ALREADY_EXISTS);
-    }
-
-    @Test
-    @DisplayName("피드 좋아요 감소 성공")
-    void feedLikeDecreaseSuccess() {
-        // given
-        Member testMember = mock(Member.class);
-        Feed testFeed = Feed.of(TEST_CONTENT, testMember);
-        FeedLike feedLike = FeedLike.of(testFeed, testMember);
-
-        ReflectionTestUtils.setField(testMember, "id", 1L);
-        ReflectionTestUtils.setField(testFeed, "id", 1L);
-        ReflectionTestUtils.setField(feedLike, "id", 1L);
-
-        when(feedLikeRepository.countByFeedId(1L)).thenReturn(1);
-        when(feedLikeRepository.getByFeedIdAndMemberId(1L, 1L)).thenReturn(feedLike);
-
-        // when
-        feedLikeService.feedLikeDecrease(1L, 1L);
-
-        // then
-        verify(feedLikeRepository).delete(feedLike);
-    }
-
-    @Test
-    @DisplayName("피드 좋아요 감소 실패 - 좋아요가 없는 경우")
-    void feedLikeDecreaseFailWithNoLike() {
-        // given
-
-        when(feedLikeRepository.countByFeedId(1L)).thenReturn(0);
-
-        // when & then
-        assertThatThrownBy(() -> feedLikeService.feedLikeDecrease(1L, 1L))
-                .isInstanceOf(FeedException.class)
-                .hasFieldOrPropertyWithValue("errorCode", FeedErrorCode.FEED_LIKE_MINUS_NOT_ALLOWED);
-    }
-
-    @Test
-    @DisplayName("피드 좋아요 감소 실패 - 존재하지 않는 좋아요")
-    void feedLikeDecreaseFailWithInvalidLike() {
-        // given
-        when(feedLikeRepository.countByFeedId(1L)).thenReturn(1);
-        when(feedLikeRepository.getByFeedIdAndMemberId(1L, 1L))
-                .thenThrow(new FeedException(FeedErrorCode.FEED_LIKE_NOT_FOUND));
-
-        // when & then
-        assertThatThrownBy(() -> feedLikeService.feedLikeDecrease(1L, 1L))
-                .isInstanceOf(FeedException.class)
-                .hasFieldOrPropertyWithValue("errorCode", FeedErrorCode.FEED_LIKE_NOT_FOUND);
-    }
-
-    @Test
-    @DisplayName("피드 좋아요 수 조회 성공")
-    void countFeedLikeByFeedIdSuccess() {
-        // given
-        when(feedLikeRepository.countByFeedId(1L)).thenReturn(5);
-
-        // when
-        int count = feedLikeService.countFeedLikeByFeedId(1L);
-
-        // then
-        assertThat(count).isEqualTo(5);
-    }
-
-    @Test
-    @DisplayName("피드 좋아요 여부 확인 성공")
-    void isLikedSuccess() {
-        // given
-        when(feedLikeRepository.existsByFeedIdAndMemberId(1L, 1L)).thenReturn(true);
-
-        // when
-        boolean isLiked = feedLikeService.isLiked(1L, 1L);
-
-        // then
-        assertThat(isLiked).isTrue();
-    }
-
-    @Test
-    @DisplayName("피드의 모든 좋아요 삭제 성공")
-    void deleteAllByFeedIdSuccess() {
+    @DisplayName("피드 좋아요 실패 - 이미 좋아요 누름 (Redis)")
+    void feedLikeIncreaseFail_AlreadyLiked() {
         // given
         Long feedId = 1L;
+        Long memberId = 1L;
+        Member member = mock(Member.class);
+        when(member.getId()).thenReturn(memberId);
 
-        // when
-        feedLikeService.deleteAllByFeedId(feedId);
+        when(valueOperations.setBit(anyString(), eq(memberId), eq(true))).thenReturn(true);
 
-        // then
-        verify(feedLikeRepository).deleteAllByFeedId(feedId);
+        // when & then
+        assertThatThrownBy(() -> feedLikeService.feedLikeIncrease(feedId, member))
+                .isInstanceOf(FeedException.class)
+                .hasFieldOrPropertyWithValue("errorCode", FeedErrorCode.FEED_LIKE_ALREADY_EXISTS);
+
+        verify(feedLikeRepository, never()).save(any());
     }
-} 
+
+    @Test
+    @DisplayName("피드 좋아요 취소 성공 (Redis)")
+    void feedLikeDecreaseSuccess() {
+        // given
+        Long feedId = 1L;
+        Long memberId = 1L;
+
+
+        when(valueOperations.getBit(anyString(), eq(memberId))).thenReturn(true);
+
+        feedLikeService.feedLikeDecrease(feedId, memberId);
+
+        verify(valueOperations).setBit(anyString(), eq(memberId), eq(false));
+
+        verify(setOperations).add("feed:likes:dirty", String.valueOf(feedId));
+
+        verify(feedLikeRepository).deleteByFeedIdAndMemberId(feedId, memberId);
+    }
+
+    @Test
+    @DisplayName("피드 좋아요 취소 실패 - 좋아요 안 누른 상태 (Redis)")
+    void feedLikeDecreaseFail_NotLiked() {
+        // given
+        Long feedId = 1L;
+        Long memberId = 1L;
+
+        when(valueOperations.getBit(anyString(), eq(memberId))).thenReturn(false);
+
+        // when & then
+        assertThatThrownBy(() -> feedLikeService.feedLikeDecrease(feedId, memberId))
+                .isInstanceOf(FeedException.class)
+                .hasFieldOrPropertyWithValue("errorCode", FeedErrorCode.FEED_LIKE_NOT_FOUND);
+
+        verify(feedLikeRepository, never()).deleteByFeedIdAndMemberId(anyLong(), anyLong());
+    }
+}
