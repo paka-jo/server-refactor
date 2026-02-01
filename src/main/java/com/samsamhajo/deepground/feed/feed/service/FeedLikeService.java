@@ -22,10 +22,11 @@ public class FeedLikeService {
 
     @Transactional
     public void feedLikeIncrease(Long feedId, Member member) {
-        increaseValidate(feedId, member.getId());
 
         Feed feed = feedRepository.findByIdWithLock(feedId)
                 .orElseThrow(()-> new FeedException(FeedErrorCode.FEED_NOT_FOUND));
+
+        increaseValidate(feedId, member.getId());
 
         FeedLike feedLike = FeedLike.of(feed, member);
 
