@@ -30,4 +30,6 @@ public interface FeedLikeRepository extends JpaRepository<FeedLike, Long> {
         return findByFeedIdAndMemberId(feedId, memberId)
                 .orElseThrow(()->new FeedException(FeedErrorCode.FEED_LIKE_NOT_FOUND));
     }
+
+    void deleteByFeedIdAndMemberId(Long feedId, Long memberId);
 }
