@@ -74,6 +74,8 @@ public class feddLikeServcierRefactorTest {
 
         feedService.createFeed(request,members.get(1));
 
+        long startTime = System.currentTimeMillis();
+
         for (int i = 0; i < threadCount; i++) {
             Member member = members.get(i);
 
@@ -87,6 +89,10 @@ public class feddLikeServcierRefactorTest {
         }
 
         latch.await();
+
+        long duration = System.currentTimeMillis() - startTime;
+
+        System.out.println("비관적락 피드 좋아요 100명 소요 시간: " + duration + "ms");
 
         //then
         Feed feed = feedRepository.findById(targetFeedId).orElseThrow();
