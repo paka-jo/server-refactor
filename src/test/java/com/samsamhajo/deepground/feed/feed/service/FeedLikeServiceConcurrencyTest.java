@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -82,10 +83,11 @@ public class FeedLikeServiceConcurrencyTest {
     }
 
     @AfterEach
-    void cleanup() {
-        feedLikeRepository.deleteAll();
-        feedRepository.deleteAll();
-        memberRepository.deleteAll();
+    void tearDown() throws InterruptedException {
+    if (executorService != null) {
+            executorService.shutdown();
+            executorService.awaitTermination(5, TimeUnit.SECONDS);
+        }
     }
 
     @Test
