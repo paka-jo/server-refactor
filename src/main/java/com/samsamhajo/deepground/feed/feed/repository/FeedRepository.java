@@ -25,10 +25,6 @@ public interface FeedRepository extends JpaRepository<Feed, Long>, FeedRepositor
         return findById(id).orElseThrow(() -> new FeedException(FeedErrorCode.FEED_NOT_FOUND));
     }
 
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select f from Feed f where f.id = :id")
-    Optional<Feed> findByIdWithLock(@Param("id") Long id);
-
     Page<Feed> findAllByMemberId(Pageable pageable, Long memberId);
 
     @Modifying(clearAutomatically = true)
