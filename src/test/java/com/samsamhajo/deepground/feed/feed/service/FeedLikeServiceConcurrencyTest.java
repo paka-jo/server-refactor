@@ -1,18 +1,15 @@
-package com.samsamhajo.deepground.feed.refactor;
+package com.samsamhajo.deepground.feed.feed.service;
 
 import com.samsamhajo.deepground.feed.feed.entity.Feed;
 import com.samsamhajo.deepground.feed.feed.model.FeedCreateRequest;
 import com.samsamhajo.deepground.feed.feed.repository.FeedLikeRepository;
 import com.samsamhajo.deepground.feed.feed.repository.FeedRepository;
-import com.samsamhajo.deepground.feed.feed.service.FeedLikeScheduler;
-import com.samsamhajo.deepground.feed.feed.service.FeedLikeService;
-import com.samsamhajo.deepground.feed.feed.service.FeedLikeSyncService;
-import com.samsamhajo.deepground.feed.feed.service.FeedService;
 import com.samsamhajo.deepground.global.config.S3Config;
 import com.samsamhajo.deepground.global.upload.S3Uploader;
 import com.samsamhajo.deepground.member.entity.Member;
 import com.samsamhajo.deepground.member.entity.Role;
 import com.samsamhajo.deepground.member.repository.MemberRepository;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -31,7 +28,7 @@ import java.util.concurrent.Executors;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
-public class FeedLikeServiceRefactorTest {
+public class FeedLikeServiceConcurrencyTest {
 
     @Autowired private FeedService feedService;
     @Autowired private FeedRepository feedRepository;
@@ -84,6 +81,13 @@ public class FeedLikeServiceRefactorTest {
         redisTemplate.delete(redisKey);
     }
 
+    @AfterEach
+    void cleanup() {
+        feedLikeRepository.deleteAll();
+        feedRepository.deleteAll();
+        memberRepository.deleteAll();
+    }
+
     @Test
     @DisplayName("피드 좋아요 동시성 테스트 (증가)")
     void updateFeedLikeBy100() throws InterruptedException {
@@ -102,6 +106,7 @@ public class FeedLikeServiceRefactorTest {
         }
 
         latch.await();
+        executorService.shutdown();
         long duration = System.currentTimeMillis() - startTime;
         System.out.println("Redis 피드 좋아요 1000명 소요 시간: " + duration + "ms");
 
