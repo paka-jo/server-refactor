@@ -48,7 +48,7 @@ public class FeedLikeServiceRefactorTest {
     private Long targetFeedId;
     private String redisKey;
     private static final String DIRTY_KEY = "feed:likes:dirty";
-    private static final int THREAD_COUNT = 100;
+    private static final int THREAD_COUNT = 1000;
 
     private List<Member> members;
     private ExecutorService executorService;
@@ -103,12 +103,12 @@ public class FeedLikeServiceRefactorTest {
 
         latch.await();
         long duration = System.currentTimeMillis() - startTime;
-        System.out.println("피드 좋아요 100명 소요 시간: " + duration + "ms");
+        System.out.println("Redis 피드 좋아요 1000명 소요 시간: " + duration + "ms");
 
         Long bitCount = redisTemplate.execute((RedisCallback<Long>) conn ->
                 conn.bitCount(redisKey.getBytes())
         );
-        assertThat(bitCount).isEqualTo(100L);
+        assertThat(bitCount).isEqualTo(1000L);
 
         Feed feedBeforeSync = feedRepository.findById(targetFeedId).orElseThrow();
         assertThat(feedBeforeSync.getLikeCount()).isEqualTo(0);
@@ -116,7 +116,7 @@ public class FeedLikeServiceRefactorTest {
         feedLikeSyncService.syncFeedLikesToDatabase();
 
         Feed feedAfterSync = feedRepository.findById(targetFeedId).orElseThrow();
-        assertThat(feedAfterSync.getLikeCount()).isEqualTo(100);
+        assertThat(feedAfterSync.getLikeCount()).isEqualTo(1000);
     }
 
     @Test
@@ -129,7 +129,7 @@ public class FeedLikeServiceRefactorTest {
         feedLikeScheduler.syncFeedLikeCount();
 
         Feed initialFeed = feedRepository.findById(targetFeedId).orElseThrow();
-        assertThat(initialFeed.getLikeCount()).isEqualTo(100);
+        assertThat(initialFeed.getLikeCount()).isEqualTo(1000);
 
         CountDownLatch latch = new CountDownLatch(THREAD_COUNT);
         long startTime = System.currentTimeMillis();
@@ -147,7 +147,7 @@ public class FeedLikeServiceRefactorTest {
 
         latch.await();
         long duration = System.currentTimeMillis() - startTime;
-        System.out.println("좋아요 취소 100명 소요 시간: " + duration + "ms");
+        System.out.println("Redis 좋아요 취소 1000명 소요 시간: " + duration + "ms");
 
         Long bitCount = redisTemplate.execute((RedisCallback<Long>) conn ->
                 conn.bitCount(redisKey.getBytes())
@@ -158,7 +158,7 @@ public class FeedLikeServiceRefactorTest {
         assertThat(feedLikeCount).isEqualTo(0);
 
         Feed feedBeforeSync = feedRepository.findById(targetFeedId).orElseThrow();
-        assertThat(feedBeforeSync.getLikeCount()).isEqualTo(100);
+        assertThat(feedBeforeSync.getLikeCount()).isEqualTo(1000);
 
         feedLikeScheduler.syncFeedLikeCount();
 
