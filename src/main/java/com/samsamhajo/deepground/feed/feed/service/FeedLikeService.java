@@ -66,6 +66,7 @@ public class FeedLikeService {
 
         feedLikeRepository.deleteAllByFeedId(feedId);
         redisTemplate.delete(getRedisKey(feedId));
+        redisTemplate.opsForSet().add(getDirtyKey(), String.valueOf(feedId));
     }
 
     public boolean isLiked(Long feedId, Long memberId) {
