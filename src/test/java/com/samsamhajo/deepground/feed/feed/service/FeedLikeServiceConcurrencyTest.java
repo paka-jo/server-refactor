@@ -108,7 +108,6 @@ public class FeedLikeServiceConcurrencyTest {
         }
 
         latch.await();
-        executorService.shutdown();
         long duration = System.currentTimeMillis() - startTime;
         System.out.println("Redis 피드 좋아요 1000명 소요 시간: " + duration + "ms");
 
