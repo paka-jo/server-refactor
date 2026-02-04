@@ -14,9 +14,13 @@ import com.samsamhajo.deepground.feed.feedcomment.service.FeedCommentService;
 import com.samsamhajo.deepground.member.entity.Member;
 import com.samsamhajo.deepground.member.entity.MemberProfile;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
+import org.springframework.data.domain.SliceImpl;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -24,6 +28,7 @@ import org.springframework.util.StringUtils;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -35,6 +40,8 @@ public class FeedService {
     private final FeedLikeService feedLikeService;
     private final FeedMediaRepository feedMediaRepository;
     private final FeedLikeRepository feedLikeRepository;
+    private final ApplicationEventPublisher eventPublisher;
+    private final RedisTemplate<String, Object> redisTemplate;
 
     @Transactional
     public Feed createFeed(FeedCreateRequest request, Member member) {
@@ -46,7 +53,9 @@ public class FeedService {
 
         feedRepository.save(feed);
 
-        saveFeedMedia(request, feed);
+        List<String> savedUrls = saveFeedMedia(request, feed);
+
+        eventPublisher.publishEvent(new FeedCreateEvent(feed,member,savedUrls));
 
         return feed;
     }
@@ -102,30 +111,61 @@ public class FeedService {
 
     public FetchFeedsResponse getFeeds(Pageable pageable, Long memberId) {
 
-        Slice<FetchFeedResponse> feedSlice = feedRepository.findFeeds(pageable);
-        List<FetchFeedResponse> feeds = feedSlice.getContent();
+        List<FetchFeedResponse> content;
+        boolean hasNext;
 
-        List<Long> feedIds = feeds.stream().map(FetchFeedResponse::getFeedId).toList();
+        if(pageable.getPageNumber() == 0){
+            content = fetchFromRedis();
 
-        Map<Long,List<String>> mediaMap = feedMediaRepository.findByFeedIdIn(feedIds)
-                .stream()
-                .collect(Collectors.groupingBy(
-                        fm -> fm.getFeed().getId(),
-                        Collectors.mapping(FeedMedia::getMediaUrl, Collectors.toList())
-                ));
-
-        Set<Long> likedFeedIdSet = new HashSet<>();
-        if (memberId != null) {
-            List<Long> likes = feedLikeRepository.findLikedFeedIds(memberId, feedIds);
-            likedFeedIdSet.addAll(likes);
+            if(content.isEmpty()){
+                Slice<FetchFeedResponse> slice = feedRepository.findFeeds(pageable);
+                content = slice.getContent();
+                hasNext = slice.hasNext();
+            } else{
+                hasNext = true;
+            }
+        } else {
+            Slice<FetchFeedResponse> slice = feedRepository.findFeeds(pageable);
+            content = slice.getContent();
+            hasNext = slice.hasNext();
         }
 
-        feeds.forEach(f -> {
-            f.setMediaUrls(mediaMap.getOrDefault(f.getFeedId(), List.of()));
-            f.setLiked(likedFeedIdSet.contains(f.getFeedId()));
-        });
+        enrichFeeds(content, memberId);
 
-        return FetchFeedsResponse.of(feedSlice);
+        return FetchFeedsResponse.of(new SliceImpl<>(content, pageable, hasNext));
+    }
+
+    private List<FetchFeedResponse> fetchFromRedis(){
+        try {
+            List<Object> cachedData = redisTemplate.opsForList().range("feed:recent:20", 0, -1);
+
+            if (cachedData == null || cachedData.isEmpty()) {
+                return List.of();
+            }
+
+            return cachedData.stream()
+                    .map(obj -> (FetchFeedResponse) obj)
+                    .toList();
+        } catch (Exception e) {
+            log.error("Redis로부터 피드 캐시를 가져오는 중 에러 발생: {}",e.getMessage());
+            return List.of();
+        }
+    }
+
+    private void enrichFeeds(List<FetchFeedResponse> feeds, Long memberId) {
+        if(feeds.isEmpty() || memberId == null){
+            return;
+        }
+        List<Long> feedIds = feeds.stream()
+                .map(FetchFeedResponse::getFeedId)
+                .toList();
+
+        List<Long> likedFeedIds = feedLikeRepository.findLikedFeedIds(memberId,feedIds);
+        Set<Long> likedFeedIdSet = new HashSet<>(likedFeedIds);
+
+        feeds.forEach(feed -> {
+            feed.setLiked(likedFeedIdSet.contains(feed.getFeedId()));
+        });
     }
 
     public FetchFeedSummariesResponse getFeedSummariesByMemberId(Pageable pageable, Long memberId) {
@@ -148,8 +188,8 @@ public class FeedService {
     }
 
 
-    private void saveFeedMedia(FeedCreateRequest request, Feed feed) {
-        feedMediaService.createFeedMedia(feed, request.getImages());
+    private List<String> saveFeedMedia(FeedCreateRequest request, Feed feed) {
+        return feedMediaService.createFeedMedia(feed, request.getImages());
     }
 
     @Transactional
