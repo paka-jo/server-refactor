@@ -3,10 +3,8 @@ package com.samsamhajo.deepground.feed.feed.service;
 import com.samsamhajo.deepground.feed.feed.entity.Feed;
 import com.samsamhajo.deepground.feed.feed.exception.FeedErrorCode;
 import com.samsamhajo.deepground.feed.feed.exception.FeedException;
-import com.samsamhajo.deepground.feed.feed.model.FeedCreateRequest;
-import com.samsamhajo.deepground.feed.feed.model.FeedUpdateRequest;
-import com.samsamhajo.deepground.feed.feed.model.FetchFeedResponse;
-import com.samsamhajo.deepground.feed.feed.model.FetchFeedsResponse;
+import com.samsamhajo.deepground.feed.feed.model.*;
+import com.samsamhajo.deepground.feed.feed.repository.FeedLikeRepository;
 import com.samsamhajo.deepground.feed.feed.repository.FeedMediaRepository;
 import com.samsamhajo.deepground.feed.feed.repository.FeedRepository;
 import com.samsamhajo.deepground.feed.feedcomment.service.FeedCommentService;
@@ -18,7 +16,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.*;
+import org.springframework.data.redis.core.ListOperations;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.ArrayList;
@@ -39,9 +40,15 @@ class FeedServiceTest {
     @Mock
     private FeedMediaRepository feedMediaRepository;
     @Mock
+    private FeedLikeRepository feedLikeRepository;
+    @Mock
     private FeedCommentService feedCommentService;
     @Mock
     private FeedLikeService feedLikeService;
+    @Mock
+    private RedisTemplate<String,Object> redisTemplate;
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private FeedService feedService;
@@ -71,6 +78,47 @@ class FeedServiceTest {
         assertThat(createdFeed.getMember().getId()).isEqualTo(testMember.getId());
 
         verify(feedMediaService).createFeedMedia(any(Feed.class), anyList());
+    }
+
+    @Test
+    @DisplayName("피드 생성 성공 - 이벤트 발행 확인")
+    void createFeedWithEventSuccess() {
+        // given
+        Member testMember = Member.createLocalMember(TEST_EMAIL, TEST_PASSWORD, TEST_NICKNAME);
+        FeedCreateRequest request = new FeedCreateRequest(TEST_CONTENT, List.of());
+        Feed expectedFeed = Feed.of(TEST_CONTENT, testMember);
+        when(feedRepository.save(any(Feed.class))).thenReturn(expectedFeed);
+
+        // when
+        feedService.createFeed(request, testMember);
+
+        // then
+        // 이벤트가 정확히 1번 발행되었는지 확인
+        verify(eventPublisher, times(1)).publishEvent(any(FeedCreateEvent.class));
+    }
+
+    @Test
+    @DisplayName("피드 목록 조회 성공 - Redis 캐시가 있는 경우 DB를 조회하지 않음")
+    void getFeedsFromRedisSuccess() {
+        // given
+        FetchFeedResponse cachedDto = new FetchFeedResponse();
+        cachedDto.setFeedId(100L);
+        cachedDto.setContent("캐시된 피드");
+
+        // redisTemplate.opsForList().range(...)가 데이터를 반환하도록 설정
+        ListOperations listOperations = mock(ListOperations.class);
+        when(redisTemplate.opsForList()).thenReturn(listOperations);
+        when(listOperations.range(anyString(), anyLong(), anyLong())).thenReturn(List.of(cachedDto));
+
+        // when
+        FetchFeedsResponse result = feedService.getFeeds(PageRequest.of(0, 10), 1L);
+
+        // then
+        assertThat(result.getFeeds()).hasSize(1);
+        assertThat(result.getFeeds().get(0).getContent()).isEqualTo("캐시된 피드");
+
+        // 핵심: DB 레포지토리는 호출되지 않아야 함!
+        verify(feedRepository, never()).findFeeds(any());
     }
 
     @Test
@@ -171,15 +219,20 @@ class FeedServiceTest {
     void deleteFeedSuccess() {
         // given
         Member testMember = Member.createLocalMember(TEST_EMAIL, TEST_PASSWORD, TEST_NICKNAME);
-        Feed existingFeed = Feed.of(TEST_CONTENT, testMember);
+        Feed existingFeed = spy(Feed.of(TEST_CONTENT, testMember));
+        Long feedId = 1L;
+        ReflectionTestUtils.setField(existingFeed, "id", feedId);
+
+        when(feedRepository.getById(feedId)).thenReturn(existingFeed);
 
         // when
         feedService.deleteFeed(existingFeed.getId());
 
         // then
+        verify(existingFeed).softDelete();
         verify(feedCommentService).deleteFeedCommentByFeed(existingFeed.getId());
         verify(feedLikeService).deleteAllByFeedId(existingFeed.getId());
         verify(feedMediaService).deleteAllByFeedId(existingFeed.getId());
-        verify(feedRepository).deleteById(existingFeed.getId());
+
     }
 }
