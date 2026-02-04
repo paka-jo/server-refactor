@@ -17,6 +17,8 @@ public class RedisConfig {
             RedisConnectionFactory connectionFactory,
             ObjectMapper objectMapper
     ) {
+        objectMapper.registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
+        objectMapper.disable(com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         RedisTemplate<String, Object> template = new RedisTemplate<>();
         template.setConnectionFactory(connectionFactory);
         objectMapper.configure(DeserializationFeature.USE_LONG_FOR_INTS, true);
