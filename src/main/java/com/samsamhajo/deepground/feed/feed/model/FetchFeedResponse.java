@@ -1,5 +1,7 @@
 package com.samsamhajo.deepground.feed.feed.model;
 
+import com.samsamhajo.deepground.feed.feed.entity.Feed;
+import com.samsamhajo.deepground.member.entity.Member;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -30,7 +32,7 @@ public class FetchFeedResponse {
 
     private FetchFeedResponse(UUID publicId, UUID profilePublicId, Long feedId, String memberName,
                               String content, int likeCount, int commentCount, int shareCount,
-                              String profileImageUrl, LocalDateTime createdAt){
+                              String profileImageUrl, LocalDateTime createdAt) {
         this.publicId = publicId;
         this.profilePublicId = profilePublicId;
         this.feedId = feedId;
@@ -44,8 +46,8 @@ public class FetchFeedResponse {
     }
 
     private FetchFeedResponse(UUID publicId, UUID profilePublicId, Long feedId, String memberName,
-                              String content, int likeCount, int commentCount, int shareCount,boolean isLiked,
-                              String profileImageUrl, LocalDateTime createdAt, List<String> mediaUrls){
+                              String content, int likeCount, int commentCount, int shareCount, boolean isLiked,
+                              String profileImageUrl, LocalDateTime createdAt, List<String> mediaUrls) {
         this.publicId = publicId;
         this.profilePublicId = profilePublicId;
         this.feedId = feedId;
@@ -67,6 +69,23 @@ public class FetchFeedResponse {
                 publicId, profilePublicId, feedId, memberName, content,
                 likeCount, commentCount, shareCount, isLiked,
                 profileImageUrl, createdAt, mediaUrls
+        );
+    }
+
+    public static FetchFeedResponse forCache(Feed feed, Member member, List<String> mediaUrls) {
+        return new FetchFeedResponse(
+                feed.getMember().getPublicId(),
+                member.getMemberProfile().getProfilePublicId(),
+                feed.getId(),
+                member.getNickname(),
+                feed.getContent(),
+                0, // 초기 좋아요 수
+                0, // 초기 댓글 수
+                0, // 초기 공유 수
+                false,
+                member.getMemberProfile().getProfileImage(),
+                feed.getCreatedAt(),
+                mediaUrls
         );
     }
 }
