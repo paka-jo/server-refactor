@@ -25,20 +25,11 @@ public interface FeedRepository extends JpaRepository<Feed, Long>, FeedRepositor
         return findById(id).orElseThrow(() -> new FeedException(FeedErrorCode.FEED_NOT_FOUND));
     }
 
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select f from Feed f where f.id = :id")
-    Optional<Feed> findByIdWithLock(@Param("id") Long id);
-
     Page<Feed> findAllByMemberId(Pageable pageable, Long memberId);
 
     @Modifying(clearAutomatically = true)
-    @Query("UPDATE Feed f " +
-            "SET f.likeCount = (" +
-            "   SELECT COUNT(fl) " +
-            "   FROM FeedLike fl " +
-            "   WHERE fl.feed = f) " +
-            "WHERE f.id = :feedId")
-    void updateCountFeedLikeByFeedId(@Param("feedId") Long feedId);
+    @Query("UPDATE Feed f SET f.likeCount = :count WHERE f.id = :feedId")
+    void updateLikeCount(@Param("feedId") Long feedId, @Param("count") Long count);
 
     @Modifying(clearAutomatically = true)
     @Query("UPDATE Feed f " +

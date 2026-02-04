@@ -18,16 +18,9 @@ public interface FeedLikeRepository extends JpaRepository<FeedLike, Long> {
     @Query("select fl.feed.id from FeedLike fl where fl.member.id = :memberId and fl.feed.id in :feedIds and fl.deleted = false")
     List<Long> findLikedFeedIds(@Param("memberId") Long memberId, @Param("feedIds") List<Long> feedIds);
 
-    int countByFeedId(Long feedId);
-
     boolean existsByFeedIdAndMemberId(Long feedId, Long memberId);
 
     void deleteAllByFeedId(Long feedId);
 
-    Optional<FeedLike> findByFeedIdAndMemberId(Long feed, Long memberId);
-
-    default FeedLike getByFeedIdAndMemberId(Long feedId, Long memberId){
-        return findByFeedIdAndMemberId(feedId, memberId)
-                .orElseThrow(()->new FeedException(FeedErrorCode.FEED_LIKE_NOT_FOUND));
-    }
+    void deleteByFeedIdAndMemberId(Long feedId, Long memberId);
 }
