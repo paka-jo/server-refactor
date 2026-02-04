@@ -27,8 +27,8 @@ public class FeedMediaService {
     private final S3Uploader s3Uploader;
 
     @Transactional
-    public void createFeedMedia(Feed feed, List<MultipartFile> images) {
-        if (CollectionUtils.isEmpty(images)) return;
+    public List<String> createFeedMedia(Feed feed, List<MultipartFile> images) {
+        if (CollectionUtils.isEmpty(images)) return List.of();
 
         List<FeedMedia> mediaEntities = images.stream()
                 .map(image -> {
@@ -38,7 +38,11 @@ public class FeedMediaService {
                 })
                 .toList();
 
-        feedMediaRepository.saveAll(mediaEntities);
+        List<FeedMedia> savedMedia = feedMediaRepository.saveAll(mediaEntities);
+
+        return savedMedia.stream()
+                .map(FeedMedia::getMediaUrl)
+                .toList();
     }
 
     public List<FeedMedia> findAllByFeed(Feed feed) {
