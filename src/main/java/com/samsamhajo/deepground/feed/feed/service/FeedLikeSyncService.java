@@ -23,8 +23,13 @@ public class FeedLikeSyncService {
 
     @Transactional
     public void syncFeedLikesToDatabase() {
-        List<Object> dirtyFeedIds = redisTemplate.opsForSet().pop("feed:likes:dirty", 1000);
-        if (dirtyFeedIds == null || dirtyFeedIds.isEmpty()) return;
+        String key = "feed:likes:dirty";
+
+        Set<Object> dirtyFeedIds = redisTemplate.opsForSet().members(key);
+
+        if(dirtyFeedIds == null || dirtyFeedIds.isEmpty()) return;
+
+        redisTemplate.delete(key);
 
         for (Object idObj : dirtyFeedIds) {
             try{
