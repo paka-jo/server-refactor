@@ -12,7 +12,6 @@ import com.samsamhajo.deepground.feed.feed.repository.FeedMediaRepository;
 import com.samsamhajo.deepground.feed.feed.repository.FeedRepository;
 import com.samsamhajo.deepground.feed.feedcomment.service.FeedCommentService;
 import com.samsamhajo.deepground.member.entity.Member;
-import com.samsamhajo.deepground.member.entity.MemberProfile;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -54,8 +53,9 @@ public class FeedService {
         feedRepository.save(feed);
 
         List<String> savedUrls = saveFeedMedia(request, feed);
+        FetchFeedResponse cacheDto = FetchFeedResponse.forCache(feed, member, savedUrls);
 
-        eventPublisher.publishEvent(new FeedCreateEvent(feed,member,savedUrls));
+        eventPublisher.publishEvent(new FeedCreateEvent(cacheDto));
 
         return feed;
     }
@@ -114,26 +114,36 @@ public class FeedService {
         List<FetchFeedResponse> content;
         boolean hasNext;
 
-        if(pageable.getPageNumber() == 0){
-            content = fetchFromRedis();
+        if (pageable.getPageNumber() == 0) {
+            List<FetchFeedResponse> cachedData = fetchFromRedis();
 
-            if(content.isEmpty()){
+            if (!cachedData.isEmpty()) {
+                int pageSize = pageable.getPageSize();
+
+                if (cachedData.size() > pageSize) {
+                    content = new ArrayList<>(cachedData.subList(0, pageSize));
+                    hasNext = true;
+                }
+                else {
+                    content = cachedData;
+                    hasNext = (cachedData.size() >= pageSize);
+                }
+            } else {
                 Slice<FetchFeedResponse> slice = feedRepository.findFeeds(pageable);
                 content = slice.getContent();
                 hasNext = slice.hasNext();
-            } else{
-                hasNext = true;
             }
         } else {
             Slice<FetchFeedResponse> slice = feedRepository.findFeeds(pageable);
             content = slice.getContent();
             hasNext = slice.hasNext();
         }
-
         enrichFeeds(content, memberId);
 
         return FetchFeedsResponse.of(new SliceImpl<>(content, pageable, hasNext));
     }
+
+
 
     private List<FetchFeedResponse> fetchFromRedis(){
         try {
