@@ -64,6 +64,12 @@ class FeedServiceTest {
     void createFeedSuccess() {
         // given
         Member testMember = Member.createLocalMember(TEST_EMAIL, TEST_PASSWORD, TEST_NICKNAME);
+        MemberProfile testProfile = MemberProfile.create(
+                "image.png", testMember, "intro", "job", "company", "city", "edu",
+                new ArrayList<>(), "git", "link", "web", "twit"
+        );
+        ReflectionTestUtils.setField(testMember, "memberProfile", testProfile);
+
         FeedCreateRequest request = new FeedCreateRequest(TEST_CONTENT, List.of());
         Feed expectedFeed = Feed.of(TEST_CONTENT, testMember);
 
@@ -85,6 +91,11 @@ class FeedServiceTest {
     void createFeedWithEventSuccess() {
         // given
         Member testMember = Member.createLocalMember(TEST_EMAIL, TEST_PASSWORD, TEST_NICKNAME);
+        MemberProfile testProfile = MemberProfile.create(
+                "image.png", testMember, "intro", "job", "company", "city", "edu",
+                new ArrayList<>(), "git", "link", "web", "twit"
+        );
+        ReflectionTestUtils.setField(testMember, "memberProfile", testProfile);
         FeedCreateRequest request = new FeedCreateRequest(TEST_CONTENT, List.of());
         Feed expectedFeed = Feed.of(TEST_CONTENT, testMember);
         when(feedRepository.save(any(Feed.class))).thenReturn(expectedFeed);
