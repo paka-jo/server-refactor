@@ -1,5 +1,6 @@
 package com.samsamhajo.deepground.feed.feed.repository;
 
+import com.samsamhajo.deepground.feed.feed.entity.Feed;
 import com.samsamhajo.deepground.feed.feed.entity.FeedLike;
 import com.samsamhajo.deepground.feed.feed.exception.FeedErrorCode;
 import com.samsamhajo.deepground.feed.feed.exception.FeedException;
@@ -23,4 +24,5 @@ public interface FeedLikeRepository extends JpaRepository<FeedLike, Long> {
     void deleteAllByFeedId(Long feedId);
 
     void deleteByFeedIdAndMemberId(Long feedId, Long memberId);
+
 }

@@ -7,8 +7,10 @@ import com.samsamhajo.deepground.feed.feed.repository.FeedRepository;
 import com.samsamhajo.deepground.global.config.S3Config;
 import com.samsamhajo.deepground.global.upload.S3Uploader;
 import com.samsamhajo.deepground.member.entity.Member;
+import com.samsamhajo.deepground.member.entity.MemberProfile;
 import com.samsamhajo.deepground.member.entity.Role;
 import com.samsamhajo.deepground.member.repository.MemberRepository;
+import com.samsamhajo.deepground.member.repository.ProfileRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -39,6 +41,7 @@ public class FeedLikeServiceConcurrencyTest {
     @Autowired private FeedLikeSyncService feedLikeSyncService;
     @Autowired private FeedLikeScheduler feedLikeScheduler;
     @Autowired private FeedLikeRepository feedLikeRepository;
+    @Autowired private ProfileRepository profileRepository;
 
     @MockBean protected S3Config s3Config;
     @MockBean protected S3Uploader s3Uploader;
@@ -67,6 +70,16 @@ public class FeedLikeServiceConcurrencyTest {
             Member member = Member.createLocalMember("test" + i + "@example.com", "password123", "tester" + i);
             member.verify();
             member.updateRole(Role.ROLE_USER);
+            memberRepository.save(member);
+            MemberProfile profile = MemberProfile.create(
+                    "default_image.png",
+                    member,
+                    "intro", "job", "company", "city", "edu",
+                    new ArrayList<>(),
+                    "git", "link", "web", "twit"
+            );
+            profileRepository.save(profile);
+
             members.add(member);
         }
         memberRepository.saveAll(members);
