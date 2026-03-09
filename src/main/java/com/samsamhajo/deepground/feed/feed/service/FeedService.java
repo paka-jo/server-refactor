@@ -1,5 +1,6 @@
 package com.samsamhajo.deepground.feed.feed.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.samsamhajo.deepground.feed.feed.entity.Feed;
 import com.samsamhajo.deepground.feed.feed.entity.FeedMedia;
 import com.samsamhajo.deepground.feed.feed.exception.FeedErrorCode;
@@ -41,6 +42,7 @@ public class FeedService {
     private final FeedLikeRepository feedLikeRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final RedisTemplate<String, Object> redisTemplate;
+    private final ObjectMapper objectMapper;
 
     @Transactional
     public Feed createFeed(FeedCreateRequest request, Member member) {
@@ -154,10 +156,10 @@ public class FeedService {
             }
 
             return cachedData.stream()
-                    .map(obj -> (FetchFeedResponse) obj)
+                    .map(obj -> objectMapper.convertValue(obj, FetchFeedResponse.class))
                     .toList();
         } catch (Exception e) {
-            log.error("Redis로부터 피드 캐시를 가져오는 중 에러 발생: {}",e.getMessage());
+            log.error("Redis로부터 피드 캐시를 가져오는 중 에러 발생", e);
             return List.of();
         }
     }
