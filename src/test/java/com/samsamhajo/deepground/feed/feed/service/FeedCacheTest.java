@@ -125,10 +125,13 @@ public class FeedCacheTest {
         feedService.createFeed(new FeedCreateRequest("캐시 조회 테스트 피드", List.of()), member);
         assertThat(redisTemplate.opsForList().size(CACHE_KEY)).isGreaterThan(0);
 
+        // DB에서 피드 삭제 - Redis에만 데이터가 남아있는 상태 강제
+        feedRepository.deleteAll();
+
         // when - 첫 페이지 조회
         FetchFeedsResponse response = feedService.getFeeds(PageRequest.of(0, 20), null);
 
-        // then - Redis 캐시 데이터로 응답
+        // then - DB가 아닌 Redis 캐시 데이터로 응답
         assertThat(response.getFeeds()).isNotEmpty();
         assertThat(response.getFeeds().get(0).getContent()).isEqualTo("캐시 조회 테스트 피드");
     }
